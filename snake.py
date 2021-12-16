@@ -1,6 +1,9 @@
 import random
 import pygame
 import sys
+import Q_learning
+import bitmap
+import numpy as np
 
 WINDOW_WIDTH = 700
 WINDOW_HEIGHT = 700
@@ -11,14 +14,50 @@ DOWN = 3
 LEFT = 4
 NONE = 0
 
+ACTION_UP = 0
+ACTION_RIGHT = 1
+ACTION_DOWN = 2
+ACTION_LEFT = 3
+
+
+# States
+
+#Configurations
+# Snake is above/under the apple
+# Snake is at the left/right of the apple
+# Danger at the left/right/above/under within len(snake) blocks 
+
+# position : 4 configurations
+# Danger : 4 configurations
+
+"""
+State Configuration table:
+
+Above/under apple : 1,0
+Right/Left of apple : 1,0
+Danger left : 1,0
+Danger right : 1,0
+Danger above : 1,0
+Danger underneath : 1,0
+
+"""
+STATES = 2**6
+ACTIONS = 4
+# Actions
+
 
 class Snake:
-    def __init__(self):
+    def __init__(self, train=False):
         self.body = [[WINDOW_HEIGHT//2, WINDOW_WIDTH//2]]
         self.head = self.body[0]
+        self.x = self.head[0]
+        self.y = self.head[1]
         self.length = len(self.body)
         self.dead = False
         self.dir = RIGHT
+        self.state = []
+        if train:#A voir si pertinent de rajouter ca ici
+            self.Q_learning = Q_learning.Q_learning(states, actions)
 
     def move(self,direction):
 
@@ -46,6 +85,8 @@ class Snake:
         self.body.append([x,y])
 
         self.head = self.body[-1]
+        self.x = self.head[0]
+        self.y = self.head[1]
 
         if len(self.body) > self.length:
             del self.body[0]
@@ -53,24 +94,77 @@ class Snake:
 
     def collision(self):
         #RAJOUTER OBSTACLES
-        if self.head[0] < 0 or self.head[0] > WINDOW_HEIGHT or self.head[1] > WINDOW_WIDTH or self.head[1] < 0:
-            print("Collision avec le décor, pos = ",self.body)
+        if self.x < 0 or self.x > WINDOW_WIDTH or self.y > WINDOW_HEIGHT or self.y < 0:
+            #print("Collision avec le décor, pos = ",self.body)
             self.dead = True
         else:
             if self.length > 2:
                 for i in range(1,self.length-1):
                     if self.head == self.body[i]:
                         self.dead = True
-                        print("Collision avec soi meme, pos = ",self.body)
+                        #print("Collision avec soi meme, pos = ",self.body)
         
     def grow(self,respawn):
         if respawn:
-            print("Here")
+            #print("Here")
             self.length += 1
 
     def draw(self,surface):
         for i in range(self.length):
             pygame.draw.rect(surface,'black',pygame.Rect(self.body[i][0],self.body[i][1],10,10))
+
+    def encode_state(self,target):
+        encoded_map = bitmap.BitMap(6)
+        bit_position = 0
+        collision_left = False
+        collision_right = False
+        collision_up = False
+        collision_down = False
+
+        #Encode relative position to apple
+        if self.y < target.y:
+            encoded_map.set(bit_position)
+        bit_position+=1
+        if self.x > target.x:
+            encoded_map.set(bit_position)
+        bit_position+=1
+        #Encode Danger
+        for i in range(1,self.length):
+                    if [self.x-10,self.y] == self.body[i]:
+                        collision_left = True
+        for i in range(1,self.length):
+                    if [self.x+10,self.y] == self.body[i]:
+                        collision_right = True
+        for i in range(1,self.length):
+                    if [self.x,self.y+10] == self.body[i]:
+                        collision_down = True
+        for i in range(1,self.length):
+                    if [self.x,self.y-10] == self.body[i]:
+                        collision_up = True
+        if self.x-10 < 0 or collision_left:
+            encoded_map.set(bit_position)
+        bit_position+=1
+        if self.x+10 > WINDOW_WIDTH or collision_right:
+            encoded_map.set(bit_position)
+        bit_position+=1
+        if self.y-10 < 0 or collision_up:
+            encoded_map.set(bit_position)
+        bit_position+=1
+        if self.y+10 > WINDOW_HEIGHT or collision_down:
+            encoded_map.set(bit_position)
+
+        return encoded_map.tostring()[2:]
+        
+    def reward(self,target):
+        if self.head == [target.x,target.y]:
+            return 200
+
+        elif self.dead == True:
+            return -100
+
+        else:
+            return -1
+
 
 
 class Target():
@@ -99,9 +193,12 @@ class Obstacles:
         pass
 
 class Jeu():
-    def __init__(self):
+    def __init__(self, train=False):
         self.target = Target()
         self.snake = Snake()
+        self.pause = False
+        if train:
+            self.Q_learning = Q_learning.Q_learning(STATES, ACTIONS)
 
     def play(self):
         surface = pygame.display.set_mode((WINDOW_WIDTH,WINDOW_HEIGHT))
@@ -129,9 +226,19 @@ class Jeu():
                     snake_move = 4
                 elif event.key == pygame.K_TAB:
                     self.snake.grow(True)
+                    self.pause = True
 
-            clock.tick(30)
+            clock.tick(100)
             pygame.display.flip()
+
+            while self.pause:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT: sys.exit()
+                    
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_TAB:
+                            self.pause = False
+
 
             self.snake.grow(self.target.respawn(self.snake))
 
@@ -139,16 +246,110 @@ class Jeu():
 
             self.snake.move(snake_move)
 
+            #print(self.snake.encode_state(self.target))
+
             self.snake.collision()
+
+            print(self.snake.reward(self.target))
+
+    def train_q_learning(self):
+        surface = pygame.display.set_mode((WINDOW_WIDTH,WINDOW_HEIGHT))
+        clock = pygame.time.Clock()
+        episode = 0
+        display = False
+        for episode in range(self.Q_learning.max_episodes):
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_d:
+                        if display==False:
+                            display = True
+
+            if display:
+                self.Q_learning.max_steps = self.Q_learning.max_steps*1.5
+
+            curr_reward = 0
+            self.target = Target()
+            self.snake = Snake()
+            step = 0
+            if display:
+                print("\n\n\n\n",self.Q_learning.q_table)
+            while self.snake.dead == False and step<self.Q_learning.max_steps: 
+                if display:
+                    surface.fill('white')
+
+                    self.target.draw(surface)
+                    self.snake.draw(surface)
+
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT: sys.exit()
+
+                state = int(self.snake.encode_state(self.target),2)
+
+                action = self.Q_learning.choose_action(state)
+                if display:
+                    clock.tick(30)
+                    pygame.display.flip()
+
+                self.snake.grow(self.target.respawn(self.snake))
+
+                self.snake.move(action+1)
+
+                self.snake.collision()
+
+                next_state = int(self.snake.encode_state(self.target),2)
+
+                reward = self.snake.reward(self.target)
+
+                curr_reward += reward
+
+                self.Q_learning.update_q_table(state, action, reward, next_state)
+                
+                step+=1
+
+                
+
+            self.Q_learning.rew_list.append(curr_reward)
+
+            self.Q_learning.update_epsilon()
+
+            display = False
+            surface.fill('black')
+            pygame.display.flip()
+
+        rew_per_thousand_episodes = np.split(np.array(self.Q_learning.rew_list),episode/1000)
+
+        count = 1000
+
+        print("*********Average reward per 1000 episode**********")
+
+        for r in rew_per_thousand_episodes:
+            print(count, " :", str(sum(r/1000)))
+            count+=1000
+
+        print("**********Optimal Q table*********")
+
+        print(self.Q_learning.q_table)
+            
+
+
+                
+
+
+
+
+
+
 
             
 
 
 
 if __name__ == "__main__":
-    jeu = Jeu()
+    jeu = Jeu(True)
 
-    jeu.play()
+    #jeu.play()
+
+    jeu.train_q_learning()
             
 
 
