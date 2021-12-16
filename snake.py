@@ -94,7 +94,7 @@ class Snake:
 
     def collision(self):
         #RAJOUTER OBSTACLES
-        if self.x < 0 or self.x > WINDOW_WIDTH or self.y > WINDOW_HEIGHT or self.y < 0:
+        if self.x < 0 or self.x >= WINDOW_WIDTH or self.y >= WINDOW_HEIGHT or self.y < 0:
             #print("Collision avec le décor, pos = ",self.body)
             self.dead = True
         else:
@@ -282,7 +282,28 @@ class Jeu():
 
                     for event in pygame.event.get():
                         if event.type == pygame.QUIT: sys.exit()
+                        
+                        elif event.type == pygame.KEYDOWN:
+                            if event.key == pygame.K_d:
+                                if display==False:
+                                    display = True
+                                elif display==True:
+                                    display = False
+                            elif event.key == pygame.K_p:
+                                    self.pause = True
+                        
+                
+                while self.pause:
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT: sys.exit()
+                        
+                        if event.type == pygame.KEYDOWN:
+                            if event.key == pygame.K_p:
+                                self.pause = False
 
+                            elif event.key == pygame.K_i:
+                                print(self.snake.head)
+                
                 state = int(self.snake.encode_state(self.target),2)
 
                 action = self.Q_learning.choose_action(state)
