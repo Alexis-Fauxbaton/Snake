@@ -55,9 +55,6 @@ class Snake:
         self.length = len(self.body)
         self.dead = False
         self.dir = RIGHT
-        self.state = []
-        if train:#A voir si pertinent de rajouter ca ici
-            self.Q_learning = Q_learning.Q_learning(states, actions)
 
     def move(self,direction):
 
