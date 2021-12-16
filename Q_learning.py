@@ -7,7 +7,7 @@ class Q_learning:
     """
     Using eps-greedy method
     """
-    def __init__(self, states, actions, max_episodes=10000, max_steps=1000, learning_rate=0.001, epsilon_decay=0.01, e_greedy=1, discount_factor=0.9):
+    def __init__(self, states, actions, max_episodes=10000, max_steps=1000, learning_rate=0.01, epsilon_decay=0.001, e_greedy=1, discount_factor=0.9):
         self.actions = actions
         self.actions_list = [i for i in range(actions)]
         self.states = states
@@ -29,6 +29,7 @@ class Q_learning:
     def update_q_table(self, state, action, reward, next_state):
         self.q_table[state, action] = (1 - self.learning_rate) * self.q_table[state, action] + self.learning_rate * (reward + self.discount_factor * np.max(self.q_table[next_state, :]) - self.q_table[state,action])
 
-    def update_epsilon(self):
-        self.e_greedy = (1 - self.epsilon_decay) * self.e_greedy
+    def update_epsilon(self,episode):
+        #self.e_greedy = (1 - self.epsilon_decay) * self.e_greedy
+        self.e_greedy = 0.001 + (1 - 0.001) * np.exp(-self.epsilon_decay * episode)
 

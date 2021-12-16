@@ -5,8 +5,8 @@ import Q_learning
 import bitmap
 import numpy as np
 
-WINDOW_WIDTH = 700
-WINDOW_HEIGHT = 700
+WINDOW_WIDTH = 900
+WINDOW_HEIGHT = 900
 
 UP = 1
 RIGHT = 2
@@ -71,16 +71,16 @@ class Snake:
             direction = self.dir
         if direction == UP:
             self.dir = UP
-            y = self.body[-1][1] - 10
+            y = self.body[-1][1] - 30
         elif direction == DOWN:
             self.dir = DOWN
-            y = self.body[-1][1] + 10
+            y = self.body[-1][1] + 30
         elif direction == RIGHT:
             self.dir = RIGHT
-            x = self.body[-1][0] + 10
+            x = self.body[-1][0] + 30
         else:
             self.dir = LEFT
-            x = self.body[-1][0] - 10
+            x = self.body[-1][0] - 30
         
         self.body.append([x,y])
 
@@ -111,7 +111,7 @@ class Snake:
 
     def draw(self,surface):
         for i in range(self.length):
-            pygame.draw.rect(surface,'black',pygame.Rect(self.body[i][0],self.body[i][1],10,10))
+            pygame.draw.rect(surface,'black',pygame.Rect(self.body[i][0],self.body[i][1],30,30))
 
     def encode_state(self,target):
         encoded_map = bitmap.BitMap(6)
@@ -130,16 +130,16 @@ class Snake:
         bit_position+=1
         #Encode Danger
         for i in range(1,self.length):
-                    if [self.x-10,self.y] == self.body[i]:
+                    if [self.x-30,self.y] == self.body[i]:
                         collision_left = True
         for i in range(1,self.length):
-                    if [self.x+10,self.y] == self.body[i]:
+                    if [self.x+30,self.y] == self.body[i]:
                         collision_right = True
         for i in range(1,self.length):
-                    if [self.x,self.y+10] == self.body[i]:
+                    if [self.x,self.y+30] == self.body[i]:
                         collision_down = True
         for i in range(1,self.length):
-                    if [self.x,self.y-10] == self.body[i]:
+                    if [self.x,self.y-30] == self.body[i]:
                         collision_up = True
         if self.x-10 < 0 or collision_left:
             encoded_map.set(bit_position)
@@ -157,32 +157,32 @@ class Snake:
         
     def reward(self,target):
         if self.head == [target.x,target.y]:
-            return 200
+            return 500
 
         elif self.dead == True:
             return -100
 
         else:
-            return -1
+            return -3
 
 
 
 class Target():
     def __init__(self):
         #self.x = random.randint(0,WINDOW_WIDTH)
-        self.x = random.randrange(0, WINDOW_WIDTH, 10)
-        self.y = random.randrange(0, WINDOW_HEIGHT, 10)
+        self.x = random.randrange(0, WINDOW_WIDTH, 30)
+        self.y = random.randrange(0, WINDOW_HEIGHT, 30)
 
     def respawn(self,snake):
         if snake.head == [self.x,self.y]:
-            self.x = random.randrange(0, WINDOW_WIDTH, 10)
-            self.y = random.randrange(0, WINDOW_HEIGHT, 10)
+            self.x = random.randrange(0, WINDOW_WIDTH, 30)
+            self.y = random.randrange(0, WINDOW_HEIGHT, 30)
             return True
 
         return False
 
     def draw(self,surface):
-        pygame.draw.rect(surface,'red',pygame.Rect(self.x,self.y,10,10))
+        pygame.draw.rect(surface,'red',pygame.Rect(self.x,self.y,30,30))
 
 class Obstacle:
     def __init__(self):
@@ -228,7 +228,7 @@ class Jeu():
                     self.snake.grow(True)
                     self.pause = True
 
-            clock.tick(100)
+            clock.tick(30)
             pygame.display.flip()
 
             while self.pause:
@@ -263,10 +263,11 @@ class Jeu():
                     if event.key == pygame.K_d:
                         if display==False:
                             display = True
-
-            if display:
-                self.Q_learning.max_steps = self.Q_learning.max_steps*1.5
-
+            
+            if episode % 1000 == 0:
+                print("Episode : ",episode)
+                self.Q_learning.max_steps = self.Q_learning.max_steps*1.01
+            
             curr_reward = 0
             self.target = Target()
             self.snake = Snake()
@@ -331,13 +332,13 @@ class Jeu():
 
             self.Q_learning.rew_list.append(curr_reward)
 
-            self.Q_learning.update_epsilon()
+            self.Q_learning.update_epsilon(episode)
 
             display = False
             surface.fill('black')
             pygame.display.flip()
 
-        rew_per_thousand_episodes = np.split(np.array(self.Q_learning.rew_list),episode/1000)
+        rew_per_thousand_episodes = np.array_split(np.array(self.Q_learning.rew_list),episode/1000)
 
         count = 1000
 
