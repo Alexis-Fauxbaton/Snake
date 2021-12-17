@@ -5,8 +5,8 @@ import Q_learning
 import bitmap
 import numpy as np
 
-WINDOW_WIDTH = 900
-WINDOW_HEIGHT = 900
+WINDOW_WIDTH = 700
+WINDOW_HEIGHT = 700
 
 UP = 1
 RIGHT = 2
@@ -68,16 +68,16 @@ class Snake:
             direction = self.dir
         if direction == UP:
             self.dir = UP
-            y = self.body[-1][1] - 30
+            y = self.body[-1][1] - 25
         elif direction == DOWN:
             self.dir = DOWN
-            y = self.body[-1][1] + 30
+            y = self.body[-1][1] + 25
         elif direction == RIGHT:
             self.dir = RIGHT
-            x = self.body[-1][0] + 30
+            x = self.body[-1][0] + 25
         else:
             self.dir = LEFT
-            x = self.body[-1][0] - 30
+            x = self.body[-1][0] - 25
         
         self.body.append([x,y])
 
@@ -108,7 +108,7 @@ class Snake:
 
     def draw(self,surface):
         for i in range(self.length):
-            pygame.draw.rect(surface,'black',pygame.Rect(self.body[i][0],self.body[i][1],30,30))
+            pygame.draw.rect(surface,'black',pygame.Rect(self.body[i][0],self.body[i][1],25,25))
 
     def encode_state(self,target):
         encoded_map = bitmap.BitMap(6)
@@ -127,16 +127,16 @@ class Snake:
         bit_position+=1
         #Encode Danger
         for i in range(1,self.length):
-                    if [self.x-30,self.y] == self.body[i]:
+                    if [self.x-25,self.y] == self.body[i]:
                         collision_left = True
         for i in range(1,self.length):
-                    if [self.x+30,self.y] == self.body[i]:
+                    if [self.x+25,self.y] == self.body[i]:
                         collision_right = True
         for i in range(1,self.length):
-                    if [self.x,self.y+30] == self.body[i]:
+                    if [self.x,self.y+25] == self.body[i]:
                         collision_down = True
         for i in range(1,self.length):
-                    if [self.x,self.y-30] == self.body[i]:
+                    if [self.x,self.y-25] == self.body[i]:
                         collision_up = True
         if self.x-10 < 0 or collision_left:
             encoded_map.set(bit_position)
@@ -167,19 +167,19 @@ class Snake:
 class Target():
     def __init__(self):
         #self.x = random.randint(0,WINDOW_WIDTH)
-        self.x = random.randrange(0, WINDOW_WIDTH, 30)
-        self.y = random.randrange(0, WINDOW_HEIGHT, 30)
+        self.x = random.randrange(0, WINDOW_WIDTH, 25)
+        self.y = random.randrange(0, WINDOW_HEIGHT, 25)
 
     def respawn(self,snake):
         if snake.head == [self.x,self.y]:
-            self.x = random.randrange(0, WINDOW_WIDTH, 30)
-            self.y = random.randrange(0, WINDOW_HEIGHT, 30)
+            self.x = random.randrange(0, WINDOW_WIDTH, 25)
+            self.y = random.randrange(0, WINDOW_HEIGHT, 25)
             return True
 
         return False
 
     def draw(self,surface):
-        pygame.draw.rect(surface,'red',pygame.Rect(self.x,self.y,30,30))
+        pygame.draw.rect(surface,'red',pygame.Rect(self.x,self.y,25,25))
 
 class Obstacle:
     def __init__(self):
@@ -289,6 +289,8 @@ class Jeu():
                                     display = False
                             elif event.key == pygame.K_p:
                                     self.pause = True
+                            elif event.key == pygame.K_s:
+                                    np.savetxt("Q_table.txt",self.Q_learning.q_table)
                         
                 
                 while self.pause:
@@ -351,7 +353,64 @@ class Jeu():
             
 
 
+    def evaluate_training(self,n_games):
+        surface = pygame.display.set_mode((WINDOW_WIDTH,WINDOW_HEIGHT))
+        clock = pygame.time.Clock()
+        Q_table = np.loadtxt("Q_table.txt")
+        score_list = []
+        for game in range(n_games):
+            score = 0
+            self.target = Target()
+            self.snake = Snake()
+            step = 0
+            while self.snake.dead == False:
+
+                state = int(self.snake.encode_state(self.target),2)
+
+
+                for event in pygame.event.get():
+                        if event.type == pygame.QUIT: sys.exit()
+                        
+                        elif event.type == pygame.KEYDOWN:
+                            if event.key == pygame.K_p:
+                                self.pause = True
+
+                surface.fill('white')
+
+                self.target.draw(surface)
+                self.snake.draw(surface)
+
+                clock.tick(30)
+                pygame.display.flip()
+
+                while self.pause:
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT: sys.exit()
+                        
+                        if event.type == pygame.KEYDOWN:
+                            if event.key == pygame.K_p:
+                                self.pause = False
+
+                            elif event.key == pygame.K_i:
+                                print(self.snake.head)
+
                 
+
+                action = np.argmax(Q_table[state])
+
+                self.snake.grow(self.target.respawn(self.snake))
+
+                self.snake.move(action+1)
+
+                self.snake.collision()
+
+                score += self.snake.reward(self.target)
+            score_list.append(score)
+
+            print("Game : ",game,"\n")
+            print("Score : ",score)
+            print(np.array(score_list).mean())
+            print("\n\n")
 
 
 
@@ -368,7 +427,9 @@ if __name__ == "__main__":
 
     #jeu.play()
 
-    jeu.train_q_learning()
+    #jeu.train_q_learning()
+
+    jeu.evaluate_training(n_games=100)
             
 
 
