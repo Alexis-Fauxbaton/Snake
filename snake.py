@@ -108,7 +108,7 @@ class Snake:
 
     def draw(self,surface):
         for i in range(self.length):
-            pygame.draw.rect(surface,'black',pygame.Rect(self.body[i][0],self.body[i][1],25,25))
+            pygame.draw.rect(surface,'green',pygame.Rect(self.body[i][0],self.body[i][1],25,25))
 
     def encode_state(self,target):
         encoded_map = bitmap.BitMap(6)
@@ -207,7 +207,7 @@ class Jeu():
                     if event.type == pygame.QUIT: sys.exit()
 
             
-            surface.fill('white')
+            surface.fill('black')
 
             self.target.draw(surface)
             self.snake.draw(surface)
@@ -273,7 +273,7 @@ class Jeu():
                 print("\n\n\n\n",self.Q_learning.q_table)
             while self.snake.dead == False and step<self.Q_learning.max_steps: 
                 if display:
-                    surface.fill('white')
+                    surface.fill('black')
 
                     self.target.draw(surface)
                     self.snake.draw(surface)
@@ -375,7 +375,7 @@ class Jeu():
                             if event.key == pygame.K_p:
                                 self.pause = True
 
-                surface.fill('white')
+                surface.fill('black')
 
                 self.target.draw(surface)
                 self.snake.draw(surface)
