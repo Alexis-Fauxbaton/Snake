@@ -189,7 +189,7 @@ class Obstacles:
     def __init__(self):
         pass
 
-class Jeu():
+class Game():
     def __init__(self, train=False):
         self.target = Target()
         self.snake = Snake()
@@ -423,13 +423,13 @@ class Jeu():
 
 
 if __name__ == "__main__":
-    jeu = Jeu(True)
+    game = Game(True)
 
-    #jeu.play()
+    #game.play()
 
-    #jeu.train_q_learning()
+    #game.train_q_learning()
 
-    jeu.evaluate_training(n_games=100)
+    game.evaluate_training(n_games=100)
             
 
 
